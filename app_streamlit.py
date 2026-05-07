@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 import joblib
+import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
 import numpy as np
 
 # ===============================
@@ -10,1005 +12,1002 @@ st.set_page_config(
     page_title="HydroCheck — Prediksi Hidrasi",
     page_icon="💧",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="expanded"
 )
 
 # ===============================
-# CUSTOM CSS
+# CUSTOM CSS — MODERN CLEAN THEME
 # ===============================
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap');
 
+    /* ===== GLOBAL ===== */
     html, body, [class*="css"] {
-        font-family: 'Poppins', sans-serif;
+        font-family: 'Plus Jakarta Sans', sans-serif;
     }
 
     .stApp {
-        background: #f4f7fb;
+        background: #f0f7ff;
     }
 
-    /* ===== HIDE SIDEBAR ===== */
-    [data-testid="stSidebar"] { display: none; }
-    header[data-testid="stHeader"] { background: transparent; height: 0; }
-
-    /* ===== SCHOOL HEADER ===== */
-    .school-header {
-        background: linear-gradient(135deg, #0d47a1 0%, #1565c0 50%, #1976d2 100%);
-        border-radius: 0 0 24px 24px;
-        padding: 1rem 2rem;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 1.5rem;
-        box-shadow: 0 4px 20px rgba(13, 71, 161, 0.3);
+    /* ===== SIDEBAR ===== */
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #0a2540 0%, #0d3b6e 60%, #1a5276 100%);
+        border-right: none;
     }
 
-    .header-left {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
+    [data-testid="stSidebar"] * {
+        color: #e8f4fd !important;
     }
 
-    .header-icon {
-        font-size: 2.8rem;
-        filter: drop-shadow(0 2px 8px rgba(0,0,0,0.2));
-    }
-
-    .header-title h1 {
-        color: white;
-        font-size: 1.6rem;
-        font-weight: 800;
-        margin: 0;
-        line-height: 1.2;
-        letter-spacing: -0.02em;
-    }
-
-    .header-title p {
-        color: rgba(255,255,255,0.75);
-        font-size: 0.78rem;
-        font-weight: 500;
-        margin: 0;
-        letter-spacing: 0.06em;
+    [data-testid="stSidebar"] .stMarkdown h2 {
+        color: #7dd3fc !important;
+        font-size: 1.1rem;
+        font-weight: 700;
+        letter-spacing: 0.05em;
         text-transform: uppercase;
+        margin-top: 1.2rem;
     }
 
-    .header-right {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 0.3rem;
+    [data-testid="stSidebar"] hr {
+        border-color: rgba(125, 211, 252, 0.2) !important;
+        margin: 0.8rem 0;
     }
 
-    .school-logo {
-        width: 64px;
-        height: 64px;
-        border-radius: 50%;
-        background: white;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 2rem;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-        overflow: hidden;
-    }
-
-    .school-logo img {
-        width: 100%;
-        height: 100%;
-        object-fit: contain;
-        border-radius: 50%;
-    }
-
-    .school-name {
-        color: rgba(255,255,255,0.85);
-        font-size: 0.68rem;
-        font-weight: 600;
-        text-align: center;
-        letter-spacing: 0.04em;
+    /* ===== HIDE DEFAULT HEADER ===== */
+    header[data-testid="stHeader"] {
+        background: transparent;
     }
 
     /* ===== TABS ===== */
     .stTabs [data-baseweb="tab-list"] {
         background: white;
-        border-radius: 14px;
-        padding: 5px;
-        gap: 3px;
-        box-shadow: 0 2px 10px rgba(13, 71, 161, 0.08);
-        border: 1px solid #e3eaf7;
+        border-radius: 16px;
+        padding: 6px;
+        gap: 4px;
+        box-shadow: 0 2px 12px rgba(10, 37, 64, 0.08);
+        border: 1px solid rgba(10, 37, 64, 0.06);
     }
 
     .stTabs [data-baseweb="tab"] {
-        border-radius: 10px;
-        font-family: 'Poppins', sans-serif;
+        border-radius: 12px;
+        font-family: 'Plus Jakarta Sans', sans-serif;
         font-weight: 600;
-        font-size: 0.85rem;
+        font-size: 0.88rem;
         color: #64748b;
-        padding: 9px 20px;
+        padding: 10px 22px;
         transition: all 0.2s;
     }
 
     .stTabs [aria-selected="true"] {
-        background: linear-gradient(135deg, #0d47a1, #1976d2) !important;
+        background: linear-gradient(135deg, #0a2540, #1a5276) !important;
         color: white !important;
     }
 
-    /* ===== CARDS ===== */
-    .card {
+    /* ===== METRIC CARDS ===== */
+    [data-testid="stMetric"] {
         background: white;
         border-radius: 16px;
-        padding: 1.5rem;
-        box-shadow: 0 2px 12px rgba(13, 71, 161, 0.07);
-        border: 1px solid #e8eef8;
-        margin-bottom: 1rem;
+        padding: 1.2rem 1.4rem;
+        box-shadow: 0 2px 12px rgba(10, 37, 64, 0.07);
+        border: 1px solid rgba(10, 37, 64, 0.05);
     }
 
-    .card-title {
-        font-size: 0.75rem;
+    /* ===== SLIDERS ===== */
+    [data-testid="stSlider"] > div > div > div > div {
+        background: linear-gradient(90deg, #0a2540, #2196f3) !important;
+    }
+
+    /* ===== BUTTONS ===== */
+    .stButton > button {
+        background: linear-gradient(135deg, #0a2540 0%, #1565c0 100%);
+        color: white;
+        border: none;
+        border-radius: 14px;
+        font-family: 'Plus Jakarta Sans', sans-serif;
         font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
-        color: #1565c0;
-        margin-bottom: 1rem;
+        font-size: 1rem;
+        padding: 0.75rem 2rem;
+        letter-spacing: 0.03em;
+        transition: all 0.25s;
+        box-shadow: 0 4px 15px rgba(10, 37, 64, 0.25);
     }
 
-    /* ===== RESULT ===== */
-    .result-good {
-        background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
-        border: 2px solid #43a047;
+    .stButton > button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(10, 37, 64, 0.35);
+    }
+
+    /* ===== SELECTBOX ===== */
+    [data-testid="stSelectbox"] > div > div {
+        border-radius: 12px !important;
+        border-color: #cbd5e1 !important;
+        font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    /* ===== SUCCESS / ERROR / INFO ===== */
+    [data-testid="stAlert"] {
         border-radius: 16px;
-        padding: 1.8rem;
+        border: none;
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        font-weight: 500;
+    }
+
+    /* ===== DIVIDER ===== */
+    hr {
+        border-color: #e2e8f0;
+        margin: 1.5rem 0;
+    }
+
+    /* ===== CUSTOM COMPONENTS ===== */
+    .hero-card {
+        background: linear-gradient(135deg, #0a2540 0%, #1565c0 50%, #1976d2 100%);
+        border-radius: 24px;
+        padding: 2.5rem 2rem;
+        color: white;
+        margin-bottom: 1.5rem;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .hero-card::before {
+        content: "💧";
+        position: absolute;
+        right: 2rem;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 5rem;
+        opacity: 0.15;
+    }
+
+    .hero-card h1 {
+        font-size: 1.9rem;
+        font-weight: 800;
+        margin: 0 0 0.4rem 0;
+        line-height: 1.2;
+    }
+
+    .hero-card p {
+        font-size: 0.95rem;
+        opacity: 0.82;
+        margin: 0;
+        font-weight: 400;
+    }
+
+    .info-card {
+        background: white;
+        border-radius: 18px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 2px 12px rgba(10, 37, 64, 0.06);
+        border: 1px solid rgba(10, 37, 64, 0.05);
+        border-left: 4px solid #2196f3;
+    }
+
+    .info-card h3 {
+        font-size: 1rem;
+        font-weight: 700;
+        color: #0a2540;
+        margin: 0 0 0.5rem 0;
+    }
+
+    .info-card p, .info-card li {
+        font-size: 0.9rem;
+        color: #475569;
+        line-height: 1.7;
+        margin: 0;
+    }
+
+    .result-good {
+        background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+        border-radius: 20px;
+        padding: 2rem;
         text-align: center;
+        border: 2px solid #10b981;
     }
 
     .result-poor {
-        background: linear-gradient(135deg, #fce4ec, #f8bbd0);
-        border: 2px solid #e53935;
-        border-radius: 16px;
-        padding: 1.8rem;
+        background: linear-gradient(135deg, #fee2e2, #fecaca);
+        border-radius: 20px;
+        padding: 2rem;
         text-align: center;
+        border: 2px solid #ef4444;
     }
 
-    .result-emoji { font-size: 3rem; }
-    .result-label { font-size: 1.6rem; font-weight: 800; margin: 0.3rem 0; }
-    .result-desc { font-size: 0.85rem; color: #546e7a; }
-
-    /* ===== METRIC CARDS ===== */
-    .metric-row {
-        display: flex;
-        gap: 0.8rem;
-        margin-bottom: 1rem;
+    .result-title {
+        font-size: 1.6rem;
+        font-weight: 800;
+        margin: 0.5rem 0;
     }
 
-    .metric-item {
-        flex: 1;
-        background: white;
-        border-radius: 12px;
-        padding: 1rem;
-        box-shadow: 0 1px 8px rgba(13, 71, 161, 0.07);
-        border: 1px solid #e8eef8;
-        text-align: center;
+    .result-sub {
+        font-size: 0.92rem;
+        opacity: 0.75;
+        margin: 0;
     }
 
-    .metric-val {
-        font-family: 'Fira Code', monospace;
-        font-size: 1.3rem;
-        font-weight: 700;
-        color: #0d47a1;
+    .tip-box {
+        background: #f0f9ff;
+        border-radius: 14px;
+        padding: 1rem 1.2rem;
+        margin-top: 0.8rem;
+        border: 1px solid #bae6fd;
     }
 
-    .metric-lbl {
-        font-size: 0.72rem;
-        color: #90a4ae;
+    .tip-box p {
+        font-size: 0.88rem;
+        color: #0369a1;
+        margin: 0;
         font-weight: 500;
-        margin-top: 2px;
+        line-height: 1.6;
     }
 
-    /* ===== NOTEBOOK CELLS ===== */
-    .nb-section-title {
+    .stat-pill {
+        display: inline-block;
+        background: linear-gradient(135deg, #0a2540, #1565c0);
+        color: white;
+        border-radius: 100px;
+        padding: 0.3rem 1rem;
+        font-size: 0.8rem;
+        font-weight: 700;
+        font-family: 'Space Mono', monospace;
+        margin: 0.2rem;
+    }
+
+    .section-label {
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        color: #94a3b8;
+        margin-bottom: 0.4rem;
+    }
+
+    .input-panel {
+        background: white;
+        border-radius: 20px;
+        padding: 1.8rem;
+        box-shadow: 0 2px 16px rgba(10, 37, 64, 0.07);
+        border: 1px solid rgba(10, 37, 64, 0.05);
+        height: 100%;
+    }
+
+    .panel-title {
         font-size: 0.8rem;
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.1em;
         color: #1565c0;
-        padding: 0.5rem 0;
-        border-bottom: 2px solid #e3eaf7;
-        margin: 1.2rem 0 0.8rem 0;
-    }
-
-    .nb-cell {
-        background: white;
-        border-radius: 12px;
-        overflow: hidden;
-        border: 1px solid #e3eaf7;
-        margin-bottom: 0.8rem;
-        box-shadow: 0 1px 6px rgba(13,71,161,0.05);
-    }
-
-    .nb-cell-header {
-        background: #f0f4ff;
-        padding: 0.4rem 1rem;
-        font-size: 0.72rem;
-        font-weight: 600;
-        color: #5c7cfa;
-        letter-spacing: 0.06em;
-        border-bottom: 1px solid #e3eaf7;
+        margin-bottom: 1.2rem;
         display: flex;
         align-items: center;
         gap: 0.5rem;
     }
 
-    .nb-code {
-        background: #1e2432;
-        color: #a9b7d0;
-        padding: 0.9rem 1.2rem;
-        font-family: 'Fira Code', monospace;
-        font-size: 0.78rem;
-        line-height: 1.7;
-        white-space: pre-wrap;
-        overflow-x: auto;
-    }
-
-    .nb-output {
-        background: #fafbff;
-        padding: 0.8rem 1.2rem;
-        font-family: 'Fira Code', monospace;
-        font-size: 0.78rem;
-        line-height: 1.7;
-        color: #2c3e50;
-        border-top: 1px solid #e3eaf7;
-        white-space: pre-wrap;
-    }
-
-    .nb-output-label {
-        font-size: 0.65rem;
-        font-weight: 700;
-        color: #90a4ae;
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
-        margin-bottom: 0.3rem;
-    }
-
-    .kw { color: #c792ea; }
-    .fn { color: #82aaff; }
-    .st { color: #c3e88d; }
-    .cm { color: #546e7a; font-style: italic; }
-    .nb-kw { color: #89ddff; }
-    .nu { color: #f78c6c; }
-
-    /* ===== ACCURACY BADGE ===== */
-    .acc-badge {
-        display: inline-block;
-        background: linear-gradient(135deg, #0d47a1, #1976d2);
+    .dev-card {
+        background: linear-gradient(135deg, #0a2540, #1565c0);
+        border-radius: 20px;
+        padding: 2rem;
         color: white;
+        text-align: center;
+        margin-bottom: 1rem;
+    }
+
+    .dev-card h2 {
+        font-size: 1.4rem;
+        font-weight: 800;
+        margin: 1rem 0 0.3rem 0;
+        color: white;
+    }
+
+    .dev-card p {
+        font-size: 0.88rem;
+        opacity: 0.75;
+        margin: 0;
+    }
+
+    .badge {
+        background: rgba(255,255,255,0.15);
         border-radius: 100px;
-        padding: 0.25rem 0.9rem;
+        padding: 0.3rem 1rem;
         font-size: 0.78rem;
-        font-weight: 700;
-        font-family: 'Fira Code', monospace;
+        font-weight: 600;
+        display: inline-block;
+        margin: 0.3rem;
+        backdrop-filter: blur(4px);
     }
 
-    .acc-good { background: linear-gradient(135deg, #2e7d32, #43a047); }
-    .acc-ok   { background: linear-gradient(135deg, #e65100, #f57c00); }
-
-    /* ===== BUTTONS ===== */
-    .stButton > button {
-        background: linear-gradient(135deg, #0d47a1 0%, #1976d2 100%);
-        color: white;
-        border: none;
-        border-radius: 12px;
-        font-family: 'Poppins', sans-serif;
-        font-weight: 700;
-        font-size: 0.95rem;
-        padding: 0.7rem 2rem;
-        letter-spacing: 0.02em;
-        transition: all 0.2s;
-        box-shadow: 0 4px 14px rgba(13, 71, 161, 0.3);
-    }
-
-    .stButton > button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 20px rgba(13, 71, 161, 0.4);
-    }
-
-    /* ===== SLIDER & SELECT LABELS ===== */
-    [data-testid="stSlider"] label,
-    [data-testid="stSelectbox"] label {
-        color: #1a2744 !important;
-        font-weight: 600 !important;
-        font-size: 0.88rem !important;
-    }
-
-    /* ===== TIPS ===== */
-    .tip-box {
-        background: #e8f4fd;
-        border-left: 4px solid #1976d2;
-        border-radius: 0 10px 10px 0;
-        padding: 0.8rem 1rem;
-        margin-top: 0.5rem;
-        font-size: 0.83rem;
-        color: #0d47a1;
-        line-height: 1.6;
-    }
-
-    /* ===== INFO ITEM ===== */
-    .info-item {
-        display: flex;
-        align-items: center;
+    .fact-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
         gap: 0.8rem;
-        background: white;
-        border-radius: 10px;
-        padding: 0.7rem 1rem;
-        margin-bottom: 0.5rem;
-        box-shadow: 0 1px 5px rgba(13,71,161,0.06);
-        border: 1px solid #e8eef8;
+        margin-top: 1rem;
     }
 
-    .info-icon { font-size: 1.3rem; }
-    .info-name { font-weight: 700; font-size: 0.85rem; color: #1a2744; }
-    .info-desc { font-size: 0.74rem; color: #78909c; }
+    .fact-item {
+        background: #f8fafc;
+        border-radius: 12px;
+        padding: 1rem;
+        border: 1px solid #e2e8f0;
+        text-align: center;
+    }
+
+    .fact-num {
+        font-family: 'Space Mono', monospace;
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #0a2540;
+    }
+
+    .fact-desc {
+        font-size: 0.78rem;
+        color: #64748b;
+        margin-top: 0.2rem;
+    }
+
+    .water-level-bar {
+        background: #e2e8f0;
+        border-radius: 100px;
+        height: 10px;
+        margin: 0.5rem 0;
+        overflow: hidden;
+    }
+
+    .water-level-fill {
+        height: 100%;
+        border-radius: 100px;
+        background: linear-gradient(90deg, #2196f3, #0a2540);
+    }
+
+    .stPlotlyChart, [data-testid="stPlotlyChart"] {
+        border-radius: 16px;
+        overflow: hidden;
+    }
 </style>
 """, unsafe_allow_html=True)
 
 
 # ===============================
-# LOAD MODEL
+# LOAD DATA & MODEL
 # ===============================
+@st.cache_data
+def load_data():
+    return pd.read_csv("Daily_Water_Intake.csv")
+
 @st.cache_resource
 def load_model():
-    try:
-        return joblib.load("logistic_regression_model.joblib")
-    except:
-        return None
+    return joblib.load("decision_tree_model.joblib")
 
+df = load_data()
 model = load_model()
 
 
 # ===============================
-# SCHOOL HEADER
+# SIDEBAR
 # ===============================
-st.markdown("""
-<div class="school-header">
-    <div class="header-left">
-        <div class="header-icon">💧</div>
-        <div class="header-title">
-            <h1>HydroCheck</h1>
-            <p>Prediksi Hidrasi · Machine Learning App</p>
-        </div>
+with st.sidebar:
+    col1, col2, col3 = st.columns([1,5,1])
+    with col2:
+        try:
+            st.image("img/Logo_SMK_Negeri_1_Purbalingga.png", width=180)
+        except:
+            st.markdown("💧")
+
+    st.markdown("""
+    <div style="text-align:center; padding-bottom: 1rem;">
+        <div style="font-family:'Plus Jakarta Sans',sans-serif; font-size:1.3rem; font-weight:800; color:#7dd3fc; letter-spacing:0.02em;">HydroCheck</div>
+        <div style="font-size:0.75rem; color:#94a3b8; font-weight:500; letter-spacing:0.08em; text-transform:uppercase; margin-top:2px;">Hydration Predictor</div>
     </div>
-    <div class="header-right">
-        <div class="school-logo">
-            <img src="img/Logo_SMK_Negeri_1_Purbalingga.png"
-                 onerror="this.parentElement.innerHTML='🏫'"
-                 alt="Logo Sekolah">
-        </div>
-        <div class="school-name">SMK Negeri 1<br>Purbalingga</div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("<hr style='border-color:rgba(125,211,252,0.2); margin:0.5rem 0 1rem 0;'>", unsafe_allow_html=True)
+
+    st.markdown("## ℹ️ Tentang Aplikasi")
+    st.markdown("""
+    <div style="font-size:0.85rem; color:#cbd5e1; line-height:1.7;">
+    Aplikasi ini menggunakan model <b style="color:#7dd3fc;">Machine Learning</b> untuk memprediksi tingkat hidrasi tubuh berdasarkan data personal dan kondisi lingkungan.
     </div>
-</div>
-""", unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
+
+    st.markdown("<hr style='border-color:rgba(125,211,252,0.2); margin:1rem 0;'>", unsafe_allow_html=True)
+
+    st.markdown("## 🤖 Model")
+    st.markdown("""
+    <div style="font-size:0.83rem; color:#cbd5e1; line-height:1.8;">
+    ✅ &nbsp;<b style="color:#86efac;">Decision Tree</b><br>
+    ✅ &nbsp;Random Forest<br>
+    ✅ &nbsp;Logistic Regression
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("<hr style='border-color:rgba(125,211,252,0.2); margin:1rem 0;'>", unsafe_allow_html=True)
+
+    st.markdown("## 📊 Dataset")
+    st.markdown(f"""
+    <div style="font-size:0.83rem; color:#cbd5e1; line-height:1.8;">
+    📁 &nbsp;Daily Water Intake<br>
+    📋 &nbsp;<b style="color:#fbbf24;">{len(df):,}</b> baris data<br>
+    🔖 &nbsp;<b style="color:#fbbf24;">2</b> kelas (Good / Poor)<br>
+    📌 &nbsp;<b style="color:#fbbf24;">6</b> fitur input
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("<hr style='border-color:rgba(125,211,252,0.2); margin:1rem 0;'>", unsafe_allow_html=True)
+
+    st.markdown("""
+    <div style="text-align:center; font-size:0.72rem; color:#64748b; padding: 0.5rem 0;">
+        © 2026 HydroCheck · SMK ML Project
+    </div>
+    """, unsafe_allow_html=True)
 
 
 # ===============================
 # TABS
 # ===============================
 tab1, tab2, tab3 = st.tabs([
-    "💧  Prediksi Hidrasi",
-    "📓  Notebook",
-    "👨‍💻  Developer",
+    "  💧  Prediksi  ",
+    "  📚  Informasi  ",
+    "  👨‍💻  Developer  "
 ])
 
 
-# ====================================
+# ===============================
 # TAB 1 — PREDIKSI
-# ====================================
+# ===============================
 with tab1:
+
+    # Hero Banner
+    st.markdown("""
+    <div class="hero-card">
+        <h1>💧 Cek Tingkat Hidrasimu</h1>
+        <p>Isi data di bawah ini lalu tekan tombol Prediksi untuk mengetahui apakah tubuhmu terhidrasi dengan baik.</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Input Panel
+    col1, col2 = st.columns(2, gap="large")
+
+    with col1:
+        st.markdown("""
+        <div class="panel-title">👤 Data Personal</div>
+        """, unsafe_allow_html=True)
+
+        umur = st.slider("🎂 Umur (tahun)", 10, 80, 25,
+                         help="Masukkan usia Anda dalam tahun")
+
+        berat = st.slider("⚖️ Berat Badan (kg)", 30.0, 120.0, 60.0, step=0.5,
+                          help="Masukkan berat badan Anda dalam kilogram")
+
+        gender = st.selectbox("🚻 Jenis Kelamin",
+                              ["Laki-Laki", "Perempuan"],
+                              help="Pilih jenis kelamin Anda")
+
+    with col2:
+        st.markdown("""
+        <div class="panel-title">🌿 Gaya Hidup & Lingkungan</div>
+        """, unsafe_allow_html=True)
+
+        air = st.slider("🥤 Konsumsi Air per Hari (liter)", 0.5, 5.0, 2.0, step=0.1,
+                        help="Rata-rata jumlah air yang Anda minum dalam sehari")
+
+        aktivitas = st.selectbox("🏃 Tingkat Aktivitas Fisik",
+                                 ["Rendah", "Sedang", "Tinggi"],
+                                 help="Rendah = duduk/santai | Sedang = jalan kaki/kerja | Tinggi = olahraga/kerja keras")
+
+        cuaca = st.selectbox("🌤️ Kondisi Cuaca",
+                             ["Normal", "Panas", "Dingin"],
+                             help="Kondisi cuaca di lingkungan Anda saat ini")
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    col_input, col_result = st.columns([1.1, 1], gap="large")
+    # Tombol Prediksi
+    col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1])
+    with col_btn2:
+        prediksi_btn = st.button("🔎 Prediksi Sekarang", use_container_width=True)
 
-    with col_input:
-        # Personal Data
-        st.markdown('<div class="card"><div class="card-title">👤 Data Personal</div>', unsafe_allow_html=True)
+    if prediksi_btn:
 
-        umur = st.slider("🎂 Umur (tahun)", 10, 80, 25)
-        berat = st.slider("⚖️ Berat Badan (kg)", 30.0, 120.0, 60.0, step=0.5)
-        gender = st.selectbox("🚻 Jenis Kelamin", ["Laki-Laki", "Perempuan"])
+        # Mapping
+        gender_map   = {"Laki-Laki": "Male",    "Perempuan": "Female"}
+        aktivitas_map = {"Rendah": "Low",        "Sedang": "Moderate",  "Tinggi": "High"}
+        cuaca_map    = {"Panas": "Hot",           "Dingin": "Cold",      "Normal": "Normal"}
 
-        st.markdown("</div>", unsafe_allow_html=True)
+        data_input = pd.DataFrame([[
+            umur,
+            gender_map[gender],
+            berat,
+            air,
+            aktivitas_map[aktivitas],
+            cuaca_map[cuaca]
+        ]], columns=["Age", "Gender", "Weight (kg)", "Daily Water Intake (liters)",
+                     "Physical Activity Level", "Weather"])
 
-        # Lifestyle
-        st.markdown('<div class="card"><div class="card-title">🌿 Gaya Hidup & Lingkungan</div>', unsafe_allow_html=True)
+        hasil = model.predict(data_input)[0]
 
-        air = st.slider("🥤 Konsumsi Air per Hari (liter)", 0.5, 5.0, 2.0, step=0.1)
-        aktivitas = st.selectbox("🏃 Tingkat Aktivitas", ["Rendah", "Sedang", "Tinggi"])
-        cuaca = st.selectbox("🌤️ Kondisi Cuaca", ["Normal", "Panas", "Dingin"])
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("---")
+        st.markdown("### 🎯 Hasil Prediksi")
 
-        st.markdown("</div>", unsafe_allow_html=True)
+        col_res1, col_res2 = st.columns([1.2, 1])
 
-        col_b1, col_b2, col_b3 = st.columns([1, 2, 1])
-        with col_b2:
-            btn = st.button("🔎 Prediksi Sekarang", use_container_width=True)
-
-    with col_result:
-        st.markdown("""
-        <div class="metric-row">
-            <div class="metric-item">
-                <div class="metric-val">30.000</div>
-                <div class="metric-lbl">Data Training</div>
-            </div>
-            <div class="metric-item">
-                <div class="metric-val">6</div>
-                <div class="metric-lbl">Fitur Input</div>
-            </div>
-            <div class="metric-item">
-                <div class="metric-val">3</div>
-                <div class="metric-lbl">Model ML</div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-        if btn:
-            gender_map = {"Laki-Laki": "Male", "Perempuan": "Female"}
-            aktivitas_map = {"Rendah": "Low", "Sedang": "Moderate", "Tinggi": "High"}
-            cuaca_map = {"Normal": "Normal", "Panas": "Hot", "Dingin": "Cold"}
-
-            input_data = pd.DataFrame([[
-                umur,
-                gender_map[gender],
-                berat,
-                air,
-                aktivitas_map[aktivitas],
-                cuaca_map[cuaca]
-            ]], columns=["Age", "Gender", "Weight (kg)",
-                         "Daily Water Intake (liters)",
-                         "Physical Activity Level", "Weather"])
-
-            if model:
-                hasil = model.predict(input_data)[0]
-            else:
-                # Simulasi sederhana jika model tidak ada
-                kebutuhan = 3.7 if gender == "Laki-Laki" else 2.7
-                if cuaca == "Panas": kebutuhan += 0.5
-                if aktivitas == "Tinggi": kebutuhan += 0.5
-                hasil = "Good" if air >= kebutuhan * 0.8 else "Poor"
-
+        with col_res1:
             if hasil == "Good":
                 st.markdown("""
                 <div class="result-good">
-                    <div class="result-emoji">✅</div>
-                    <div class="result-label" style="color:#2e7d32;">Hidrasi Baik</div>
-                    <div class="result-desc">Tubuhmu terhidrasi dengan cukup baik. Pertahankan pola minum yang sehat!</div>
+                    <div style="font-size:3rem;">✅</div>
+                    <div class="result-title" style="color:#065f46;">Hidrasi Baik!</div>
+                    <div class="result-sub" style="color:#047857;">Tubuh Anda terhidrasi dengan baik.</div>
                 </div>
                 """, unsafe_allow_html=True)
                 st.markdown("""
                 <div class="tip-box">
-                💡 <b>Tips:</b> Pertahankan kebiasaanmu! Minum air putih secara rutin setiap 1–2 jam sekali.
+                    <p>💡 <b>Tips:</b> Pertahankan kebiasaan minum yang baik! Tetap minum secara rutin meskipun tidak merasa haus, terutama saat berolahraga atau cuaca panas.</p>
                 </div>
                 """, unsafe_allow_html=True)
-            else:
+
+            elif hasil == "Poor":
                 st.markdown("""
                 <div class="result-poor">
-                    <div class="result-emoji">⚠️</div>
-                    <div class="result-label" style="color:#c62828;">Kurang Hidrasi</div>
-                    <div class="result-desc">Tubuhmu kekurangan cairan. Segera tingkatkan konsumsi air putihmu!</div>
+                    <div style="font-size:3rem;">⚠️</div>
+                    <div class="result-title" style="color:#991b1b;">Hidrasi Buruk!</div>
+                    <div class="result-sub" style="color:#b91c1c;">Tubuh Anda kekurangan cairan.</div>
                 </div>
                 """, unsafe_allow_html=True)
                 st.markdown("""
-                <div class="tip-box">
-                💡 <b>Tips:</b> Coba minum minimal 8 gelas (2 liter) per hari. Tambahkan asupan air saat cuaca panas atau olahraga.
+                <div class="tip-box" style="background:#fff5f5; border-color:#fca5a5;">
+                    <p style="color:#b91c1c;">💡 <b>Saran:</b> Segera tambah konsumsi air putih minimal 2–3 liter per hari. Hindari minuman berkafein dan manis yang memperparah dehidrasi.</p>
                 </div>
                 """, unsafe_allow_html=True)
 
-            # Summary ringkas
-            st.markdown("<br>", unsafe_allow_html=True)
-            st.markdown(f"""
-            <div class="card" style="padding:1rem 1.2rem;">
-                <div class="card-title">📋 Ringkasan Input</div>
-                <div style="font-size:0.83rem; color:#546e7a; line-height:2;">
-                    👤 {gender} &nbsp;·&nbsp; 🎂 {umur} tahun &nbsp;·&nbsp; ⚖️ {berat} kg<br>
-                    🥤 {air} L/hari &nbsp;·&nbsp; 🏃 {aktivitas} &nbsp;·&nbsp; 🌤️ {cuaca}
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-        else:
-            st.markdown("""
-            <div class="card" style="text-align:center; padding:3rem 1.5rem;">
-                <div style="font-size:3rem; margin-bottom:1rem;">💧</div>
-                <div style="font-size:1rem; font-weight:700; color:#1a2744; margin-bottom:0.4rem;">Siap Memprediksi</div>
-                <div style="font-size:0.83rem; color:#90a4ae;">Isi data di sebelah kiri, lalu tekan tombol <b>Prediksi Sekarang</b></div>
-            </div>
-            """, unsafe_allow_html=True)
+        with col_res2:
+            # Ringkasan input
+            st.markdown("**📋 Ringkasan Input Anda:**")
+            summary_data = {
+                "Parameter": ["Umur", "Berat Badan", "Jenis Kelamin", "Konsumsi Air", "Aktivitas", "Cuaca"],
+                "Nilai": [f"{umur} tahun", f"{berat} kg", gender, f"{air} liter/hari", aktivitas, cuaca]
+            }
+            st.dataframe(pd.DataFrame(summary_data), hide_index=True, use_container_width=True)
+
+        # Indikator visual konsumsi air
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("### 💧 Indikator Konsumsi Air Harian")
+
+        kebutuhan = 3.7 if gender == "Laki-Laki" else 2.7
+        persen = min(air / kebutuhan * 100, 100)
+
+        col_ind1, col_ind2, col_ind3 = st.columns(3)
+        with col_ind1:
+            st.metric("💧 Konsumsi Anda", f"{air} liter")
+        with col_ind2:
+            st.metric("🎯 Kebutuhan Harian", f"{kebutuhan} liter")
+        with col_ind3:
+            selisih = round(kebutuhan - air, 1)
+            st.metric("📉 Kekurangan", f"{max(selisih, 0)} liter",
+                      delta=f"{'-' if selisih > 0 else '+'}{abs(selisih)} liter",
+                      delta_color="inverse")
+
+        st.markdown(f"""
+        <div class="water-level-bar">
+            <div class="water-level-fill" style="width:{persen:.0f}%;"></div>
+        </div>
+        <div style="display:flex; justify-content:space-between; font-size:0.78rem; color:#64748b; margin-top:4px;">
+            <span>0 liter</span>
+            <span style="color:#1565c0; font-weight:700;">{persen:.0f}% dari kebutuhan harian</span>
+            <span>{kebutuhan} liter</span>
+        </div>
+        """, unsafe_allow_html=True)
+
+    # ===== CHART =====
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("---")
+    st.markdown("### 📈 Distribusi Konsumsi Air dalam Dataset")
+
+    col_chart1, col_chart2 = st.columns(2)
+
+    with col_chart1:
+        fig1, ax1 = plt.subplots(figsize=(6, 3.5))
+        fig1.patch.set_facecolor('#f8fafc')
+        ax1.set_facecolor('#f8fafc')
+
+        good = df[df["Hydration Level"] == "Good"]["Daily Water Intake (liters)"]
+        poor = df[df["Hydration Level"] == "Poor"]["Daily Water Intake (liters)"]
+
+        ax1.hist(good, bins=30, alpha=0.75, color='#2196f3', label='Good', edgecolor='white')
+        ax1.hist(poor, bins=30, alpha=0.75, color='#ef4444', label='Poor', edgecolor='white')
+        ax1.set_xlabel("Konsumsi Air (liter)", fontsize=9, color='#475569')
+        ax1.set_ylabel("Jumlah", fontsize=9, color='#475569')
+        ax1.set_title("Distribusi Konsumsi Air per Kelas", fontsize=10, fontweight='bold', color='#0a2540', pad=12)
+        ax1.legend(fontsize=8)
+        ax1.spines['top'].set_visible(False)
+        ax1.spines['right'].set_visible(False)
+        ax1.tick_params(labelsize=8, colors='#64748b')
+        for spine in ['left', 'bottom']:
+            ax1.spines[spine].set_color('#e2e8f0')
+        plt.tight_layout()
+        st.pyplot(fig1)
+
+    with col_chart2:
+        fig2, ax2 = plt.subplots(figsize=(6, 3.5))
+        fig2.patch.set_facecolor('#f8fafc')
+        ax2.set_facecolor('#f8fafc')
+
+        counts = df["Hydration Level"].value_counts()
+        colors = ['#2196f3', '#ef4444']
+        wedges, texts, autotexts = ax2.pie(
+            counts.values,
+            labels=counts.index,
+            autopct='%1.1f%%',
+            colors=colors,
+            startangle=90,
+            wedgeprops=dict(edgecolor='white', linewidth=2)
+        )
+        for text in texts:
+            text.set_fontsize(9)
+            text.set_color('#475569')
+        for autotext in autotexts:
+            autotext.set_fontsize(9)
+            autotext.set_fontweight('bold')
+            autotext.set_color('white')
+        ax2.set_title("Proporsi Kelas Hidrasi", fontsize=10, fontweight='bold', color='#0a2540', pad=12)
+        plt.tight_layout()
+        st.pyplot(fig2)
 
 
-# ====================================
-# TAB 2 — NOTEBOOK
-# ====================================
+# ===============================
+# TAB 2 — INFORMASI
+# ===============================
 with tab2:
 
-    st.markdown("<br>", unsafe_allow_html=True)
     st.markdown("""
-    <div class="card" style="padding:1rem 1.5rem; margin-bottom:1.2rem;">
-        <div style="font-size:0.95rem; font-weight:700; color:#0d47a1;">📓 Jupyter Notebook — HydroCheck ML Pipeline</div>
-        <div style="font-size:0.8rem; color:#78909c; margin-top:0.2rem;">Eksplorasi data, preprocessing, training model, dan evaluasi · Python 3 · Scikit-learn</div>
+    <div class="hero-card">
+        <h1>📚 Panduan Lengkap Hidrasi</h1>
+        <p>Pelajari semua yang perlu kamu tahu tentang hidrasi tubuh dan dampaknya pada kesehatan.</p>
     </div>
     """, unsafe_allow_html=True)
 
-    # ── SECTION 1: Load Data ──
-    st.markdown('<div class="nb-section-title">📂 1. Load & Eksplorasi Dataset</div>', unsafe_allow_html=True)
-
+    # Fakta cepat
+    st.markdown("### ⚡ Fakta Singkat Hidrasi")
     st.markdown("""
-    <div class="nb-cell">
-        <div class="nb-cell-header">⬛ In [31]</div>
-        <div class="nb-code"><span class="kw">import</span> pandas <span class="kw">as</span> pd
-
-df = pd.read_csv(<span class="st">"Daily_Water_Intake_Modified.csv"</span>)
-df</div>
-        <div class="nb-output">
-            <div class="nb-output-label">Out [31]</div>
-<table style="font-size:0.75rem; border-collapse:collapse; width:100%;">
-  <tr style="background:#e8eef8; text-align:left;">
-    <th style="padding:4px 8px;"></th><th style="padding:4px 8px;">Age</th><th style="padding:4px 8px;">Gender</th><th style="padding:4px 8px;">Weight (kg)</th><th style="padding:4px 8px;">Daily Water Intake (liters)</th><th style="padding:4px 8px;">Physical Activity Level</th><th style="padding:4px 8px;">Weather</th><th style="padding:4px 8px;">Hydration Level</th>
-  </tr>
-  <tr><td style="padding:4px 8px; color:#78909c;">0</td><td style="padding:4px 8px;">56</td><td style="padding:4px 8px;">Male</td><td style="padding:4px 8px;">96</td><td style="padding:4px 8px;">4.23</td><td style="padding:4px 8px;">Moderate</td><td style="padding:4px 8px;">Hot</td><td style="padding:4px 8px;">Good</td></tr>
-  <tr style="background:#f8faff;"><td style="padding:4px 8px; color:#78909c;">1</td><td style="padding:4px 8px;">60</td><td style="padding:4px 8px;">Male</td><td style="padding:4px 8px;">105</td><td style="padding:4px 8px;">3.95</td><td style="padding:4px 8px;">High</td><td style="padding:4px 8px;">Normal</td><td style="padding:4px 8px;">Good</td></tr>
-  <tr><td style="padding:4px 8px; color:#78909c;">2</td><td style="padding:4px 8px;">36</td><td style="padding:4px 8px;">Male</td><td style="padding:4px 8px;">68</td><td style="padding:4px 8px;">2.39</td><td style="padding:4px 8px;">Moderate</td><td style="padding:4px 8px;">Cold</td><td style="padding:4px 8px;">Good</td></tr>
-  <tr style="background:#f8faff;"><td style="padding:4px 8px; color:#78909c;">3</td><td style="padding:4px 8px;">19</td><td style="padding:4px 8px;">Female</td><td style="padding:4px 8px;">74</td><td style="padding:4px 8px;">3.13</td><td style="padding:4px 8px;">Moderate</td><td style="padding:4px 8px;">Hot</td><td style="padding:4px 8px;">Good</td></tr>
-  <tr><td style="padding:4px 8px; color:#78909c;">4</td><td style="padding:4px 8px;">38</td><td style="padding:4px 8px;">Male</td><td style="padding:4px 8px;">77</td><td style="padding:4px 8px;">2.11</td><td style="padding:4px 8px;">Low</td><td style="padding:4px 8px;">Normal</td><td style="padding:4px 8px;">Good</td></tr>
-  <tr style="background:#f8faff;"><td style="padding:4px 8px; color:#78909c;" colspan="8">... (30000 rows × 7 columns)</td></tr>
-</table>
+    <div class="fact-grid">
+        <div class="fact-item">
+            <div class="fact-num">60%</div>
+            <div class="fact-desc">Tubuh manusia terdiri dari air</div>
+        </div>
+        <div class="fact-item">
+            <div class="fact-num">2.7L</div>
+            <div class="fact-desc">Kebutuhan air harian wanita dewasa</div>
+        </div>
+        <div class="fact-item">
+            <div class="fact-num">3.7L</div>
+            <div class="fact-desc">Kebutuhan air harian pria dewasa</div>
+        </div>
+        <div class="fact-item">
+            <div class="fact-num">75%</div>
+            <div class="fact-desc">Otak manusia tersusun dari air</div>
         </div>
     </div>
     """, unsafe_allow_html=True)
-
-    st.markdown("""
-    <div class="nb-cell">
-        <div class="nb-cell-header">⬛ In [32–35]</div>
-        <div class="nb-code">df.shape
-df.columns
-df.dtypes
-df.info()</div>
-        <div class="nb-output">
-            <div class="nb-output-label">Out</div>
-(30000, 7)
-
-Index(['Age', 'Gender', 'Weight (kg)', 'Daily Water Intake (liters)',
-       'Physical Activity Level', 'Weather', 'Hydration Level'], dtype='object')
-
-Age                              int64
-Gender                          object
-Weight (kg)                      int64
-Daily Water Intake (liters)    float64
-Physical Activity Level         object
-Weather                         object
-Hydration Level                 object
-
-&lt;class 'pandas.core.frame.DataFrame'&gt;
-RangeIndex: 30000 entries, 0 to 29999
-Data columns (total 7 columns):
- #   Column                       Non-Null Count   Dtype
----  ------                       --------------   -----
- 0   Age                          30000 non-null   int64
- 1   Gender                       30000 non-null   object
- 2   Weight (kg)                  30000 non-null   int64
- 3   Daily Water Intake (liters)  30000 non-null   float64
- 4   Physical Activity Level      30000 non-null   object
- 5   Weather                      30000 non-null   object
- 6   Hydration Level              30000 non-null   object
-dtypes: float64(1), int64(2), object(4)
-memory usage: 1.6+ MB
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    st.markdown("""
-    <div class="nb-cell">
-        <div class="nb-cell-header">⬛ In [36]</div>
-        <div class="nb-code">df.describe()</div>
-        <div class="nb-output">
-            <div class="nb-output-label">Out [36]</div>
-<table style="font-size:0.75rem; border-collapse:collapse; width:100%;">
-  <tr style="background:#e8eef8;">
-    <th style="padding:4px 8px;"></th><th style="padding:4px 8px;">Age</th><th style="padding:4px 8px;">Weight (kg)</th><th style="padding:4px 8px;">Daily Water Intake (liters)</th>
-  </tr>
-  <tr><td style="padding:4px 8px; font-weight:600;">count</td><td style="padding:4px 8px;">30000.0</td><td style="padding:4px 8px;">30000.0</td><td style="padding:4px 8px;">30000.0</td></tr>
-  <tr style="background:#f8faff;"><td style="padding:4px 8px; font-weight:600;">mean</td><td style="padding:4px 8px;">43.47</td><td style="padding:4px 8px;">76.85</td><td style="padding:4px 8px;">2.85</td></tr>
-  <tr><td style="padding:4px 8px; font-weight:600;">std</td><td style="padding:4px 8px;">14.99</td><td style="padding:4px 8px;">18.74</td><td style="padding:4px 8px;">0.84</td></tr>
-  <tr style="background:#f8faff;"><td style="padding:4px 8px; font-weight:600;">min</td><td style="padding:4px 8px;">18</td><td style="padding:4px 8px;">45</td><td style="padding:4px 8px;">1.50</td></tr>
-  <tr><td style="padding:4px 8px; font-weight:600;">max</td><td style="padding:4px 8px;">69</td><td style="padding:4px 8px;">109</td><td style="padding:4px 8px;">5.43</td></tr>
-</table>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # ── SECTION 2: EDA ──
-    st.markdown('<div class="nb-section-title">📊 2. Eksplorasi Data (EDA)</div>', unsafe_allow_html=True)
-
-    st.markdown("""
-    <div class="nb-cell">
-        <div class="nb-cell-header">⬛ In [37–40]</div>
-        <div class="nb-code">df[<span class="st">"Gender"</span>].value_counts()
-df[<span class="st">"Physical Activity Level"</span>].value_counts()
-df[<span class="st">"Weather"</span>].value_counts()
-df[<span class="st">"Hydration Level"</span>].value_counts()</div>
-        <div class="nb-output">
-            <div class="nb-output-label">Out</div>
-Gender
-Male      15032
-Female    14968
-Name: count, dtype: int64
-
-Physical Activity Level
-High        10069
-Low         10011
-Moderate     9920
-Name: count, dtype: int64
-
-Weather
-Hot       10081
-Cold      10012
-Normal     9907
-Name: count, dtype: int64
-
-Hydration Level
-Good    29343
-Poor      657
-Name: count, dtype: int64
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    st.markdown("""
-    <div class="nb-cell">
-        <div class="nb-cell-header">⬛ In [44]</div>
-        <div class="nb-code">df.isnull().sum()</div>
-        <div class="nb-output">
-            <div class="nb-output-label">Out [44]</div>
-Age                            0
-Gender                         0
-Weight (kg)                    0
-Daily Water Intake (liters)    0
-Physical Activity Level        0
-Weather                        0
-Hydration Level                0
-dtype: int64
-
-✅ Tidak ada missing values!
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # ── SECTION 3: Preprocessing ──
-    st.markdown('<div class="nb-section-title">⚙️ 3. Preprocessing & Split Data</div>', unsafe_allow_html=True)
-
-    st.markdown("""
-    <div class="nb-cell">
-        <div class="nb-cell-header">⬛ In [48]</div>
-        <div class="nb-code"><span class="kw">from</span> sklearn.linear_model <span class="kw">import</span> LogisticRegression
-<span class="kw">from</span> sklearn.model_selection <span class="kw">import</span> train_test_split, cross_val_score
-<span class="kw">from</span> sklearn.metrics <span class="kw">import</span> accuracy_score, classification_report, confusion_matrix
-<span class="kw">from</span> sklearn.preprocessing <span class="kw">import</span> StandardScaler, OneHotEncoder, OrdinalEncoder
-<span class="kw">from</span> sklearn.pipeline <span class="kw">import</span> Pipeline
-<span class="kw">from</span> sklearn.compose <span class="kw">import</span> ColumnTransformer
-<span class="kw">from</span> sklearn.ensemble <span class="kw">import</span> RandomForestClassifier
-<span class="kw">from</span> sklearn.tree <span class="kw">import</span> DecisionTreeClassifier
-
-X = df[[<span class="st">"Age"</span>, <span class="st">"Gender"</span>, <span class="st">"Weight (kg)"</span>, <span class="st">"Daily Water Intake (liters)"</span>,
-        <span class="st">"Physical Activity Level"</span>, <span class="st">"Weather"</span>]]
-y = df[<span class="st">"Hydration Level"</span>]
-
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=<span class="nu">0.2</span>, random_state=<span class="nu">42</span>, stratify=y
-)
-
-<span class="cm"># Preprocessing pipeline</span>
-numeric_columns    = [<span class="st">"Age"</span>, <span class="st">"Weight (kg)"</span>, <span class="st">"Daily Water Intake (liters)"</span>]
-categorical_columns = [<span class="st">"Gender"</span>, <span class="st">"Weather"</span>]
-ordinal_columns    = [<span class="st">"Physical Activity Level"</span>]
-activity_order     = [<span class="st">"Low"</span>, <span class="st">"Moderate"</span>, <span class="st">"High"</span>]
-
-preprocessing = ColumnTransformer(transformers=[
-    (<span class="st">"scaler"</span>, StandardScaler(),  numeric_columns),
-    (<span class="st">"ohe"</span>,    OneHotEncoder(),   categorical_columns),
-    (<span class="st">"oe"</span>,     OrdinalEncoder(categories=[activity_order]), ordinal_columns)
-])</div>
-        <div class="nb-output">
-            <div class="nb-output-label">Keterangan Split</div>
-Train size : 24.000 data (80%)
-Test size  :  6.000 data (20%)
-Stratify   : Yes → proporsi Good/Poor dijaga sama
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # ── SECTION 4: Training ──
-    st.markdown('<div class="nb-section-title">🤖 4. Training & Evaluasi Model</div>', unsafe_allow_html=True)
-
-    st.markdown("""
-    <div class="nb-cell">
-        <div class="nb-cell-header">⬛ In [49] — Logistic Regression</div>
-        <div class="nb-code">model = Pipeline(steps=[
-    (<span class="st">"preprocessing"</span>, preprocessing),
-    (<span class="st">"model"</span>, LogisticRegression(random_state=<span class="nu">42</span>, max_iter=<span class="nu">1000</span>))
-])
-
-model.fit(X_train, y_train)
-y_pred_lr = model.predict(X_test)
-
-<span class="fn">print</span>(<span class="st">"Accuracy Score : "</span>, accuracy_score(y_test, y_pred_lr))
-<span class="fn">print</span>(<span class="st">"Classification Report :\n"</span>, classification_report(y_test, y_pred_lr))
-<span class="fn">print</span>(<span class="st">"Confusion Matrix :\n"</span>, confusion_matrix(y_test, y_pred_lr))</div>
-        <div class="nb-output">
-            <div class="nb-output-label">Out [49]</div>
-Accuracy Score :  0.9783333333333334
-
-Classification Report :
-               precision    recall  f1-score   support
-
-        Good       0.98      1.00      0.99      5869
-        Poor       0.56      0.04      0.07       131
-
-    accuracy                           0.98      6000
-   macro avg       0.77      0.52      0.53      6000
-weighted avg       0.97      0.98      0.97      6000
-
-Confusion Matrix :
- [[5865    4]
- [ 126    5]]
-
-CV Scores     : [0.97895833 0.97854167 0.97916667 0.97916667 0.97833333]
-CV Mean       : 0.9788
-CV Std        : 0.0003
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    st.markdown("""
-    <div class="nb-cell">
-        <div class="nb-cell-header">⬛ In [50] — Random Forest</div>
-        <div class="nb-code">model_forest = Pipeline(steps=[
-    (<span class="st">"preprocessing"</span>, preprocessing),
-    (<span class="st">"model"</span>, RandomForestClassifier(random_state=<span class="nu">42</span>))
-])
-
-model_forest.fit(X_train, y_train)
-y_pred_rf = model_forest.predict(X_test)</div>
-        <div class="nb-output">
-            <div class="nb-output-label">Out [50]</div>
-Accuracy Score :  0.9756666666666667
-
-Classification Report :
-               precision    recall  f1-score   support
-
-        Good       0.98      0.99      0.99      5869
-        Poor       0.34      0.12      0.18       131
-
-    accuracy                           0.98      6000
-   macro avg       0.66      0.56      0.58      6000
-weighted avg       0.97      0.98      0.97      6000
-
-Confusion Matrix :
- [[5838   31]
- [ 115   16]]
-
-CV Mean       : 0.9762
-CV Std        : 0.0009
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    st.markdown("""
-    <div class="nb-cell">
-        <div class="nb-cell-header">⬛ In [51] — Decision Tree</div>
-        <div class="nb-code">model_tree = Pipeline(steps=[
-    (<span class="st">"preprocessing"</span>, preprocessing),
-    (<span class="st">"model"</span>, DecisionTreeClassifier(random_state=<span class="nu">42</span>))
-])
-
-model_tree.fit(X_train, y_train)
-y_pred_dt = model_tree.predict(X_test)</div>
-        <div class="nb-output">
-            <div class="nb-output-label">Out [51]</div>
-Accuracy Score :  0.9648333333333333
-
-Classification Report :
-               precision    recall  f1-score   support
-
-        Good       0.98      0.98      0.98      5869
-        Poor       0.22      0.24      0.23       131
-
-    accuracy                           0.96      6000
-   macro avg       0.60      0.61      0.61      6000
-weighted avg       0.97      0.96      0.97      6000
-
-CV Mean       : 0.9629
-CV Std        : 0.0027
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # ── SECTION 5: Perbandingan ──
-    st.markdown('<div class="nb-section-title">🏆 5. Perbandingan Akurasi Model</div>', unsafe_allow_html=True)
-
-    st.markdown("""
-    <div class="nb-cell">
-        <div class="nb-cell-header">⬛ In [53]</div>
-        <div class="nb-code"><span class="fn">print</span>(<span class="st">"="*45</span>)
-<span class="fn">print</span>(<span class="st">"     PERBANDINGAN AKURASI MODEL"</span>)
-<span class="fn">print</span>(<span class="st">"="*45</span>)
-<span class="fn">print</span>(f<span class="st">"Logistic Regression : {accuracy_score(y_test, y_pred_lr):.4f}"</span>)
-<span class="fn">print</span>(f<span class="st">"Random Forest       : {accuracy_score(y_test, y_pred_rf):.4f}"</span>)
-<span class="fn">print</span>(f<span class="st">"Decision Tree       : {accuracy_score(y_test, y_pred_dt):.4f}"</span>)</div>
-        <div class="nb-output">
-            <div class="nb-output-label">Out [53]</div>
-=============================================
-     PERBANDINGAN AKURASI MODEL
-=============================================
-Logistic Regression : 0.9783
-Random Forest       : 0.9757
-Decision Tree       : 0.9648
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # Visual summary akurasi
-    col_a, col_b, col_c = st.columns(3)
-    with col_a:
-        st.markdown("""
-        <div class="card" style="text-align:center; padding:1.2rem;">
-            <div style="font-size:1.4rem;">🔵</div>
-            <div style="font-weight:700; font-size:0.85rem; color:#1a2744; margin:0.3rem 0;">Logistic Regression</div>
-            <span class="acc-badge acc-good">97.83%</span>
-            <div style="font-size:0.72rem; color:#78909c; margin-top:0.5rem;">🏆 Model Terbaik</div>
-        </div>
-        """, unsafe_allow_html=True)
-    with col_b:
-        st.markdown("""
-        <div class="card" style="text-align:center; padding:1.2rem;">
-            <div style="font-size:1.4rem;">🌲</div>
-            <div style="font-weight:700; font-size:0.85rem; color:#1a2744; margin:0.3rem 0;">Random Forest</div>
-            <span class="acc-badge">97.57%</span>
-            <div style="font-size:0.72rem; color:#78909c; margin-top:0.5rem;">Runner Up</div>
-        </div>
-        """, unsafe_allow_html=True)
-    with col_c:
-        st.markdown("""
-        <div class="card" style="text-align:center; padding:1.2rem;">
-            <div style="font-size:1.4rem;">🌳</div>
-            <div style="font-weight:700; font-size:0.85rem; color:#1a2744; margin:0.3rem 0;">Decision Tree</div>
-            <span class="acc-badge acc-ok">96.48%</span>
-            <div style="font-size:0.72rem; color:#78909c; margin-top:0.5rem;">Baseline</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    # ── SECTION 6: Save Model ──
-    st.markdown('<div class="nb-section-title">💾 6. Simpan Model</div>', unsafe_allow_html=True)
-
-    st.markdown("""
-    <div class="nb-cell">
-        <div class="nb-cell-header">⬛ In [55]</div>
-        <div class="nb-code"><span class="kw">import</span> joblib
-
-joblib.dump(model,        <span class="st">"logistic_regression_model.joblib"</span>)
-joblib.dump(model_forest, <span class="st">"random_forest_model.joblib"</span>)
-joblib.dump(model_tree,   <span class="st">"decision_tree_model.joblib"</span>)</div>
-        <div class="nb-output">
-            <div class="nb-output-label">Out [55]</div>
-['logistic_regression_model.joblib']
-['random_forest_model.joblib']
-['decision_tree_model.joblib']
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # ── SECTION 7: Test Prediksi ──
-    st.markdown('<div class="nb-section-title">🔎 7. Uji Prediksi Data Baru</div>', unsafe_allow_html=True)
-
-    st.markdown("""
-    <div class="nb-cell">
-        <div class="nb-cell-header">⬛ In [83]</div>
-        <div class="nb-code">data_baru = pd.DataFrame(
-    [[<span class="nu">38</span>, <span class="st">"Female"</span>, <span class="nu">77</span>, <span class="nu">1.00</span>, <span class="st">"High"</span>, <span class="st">"Hot"</span>]],
-    columns=[<span class="st">"Age"</span>, <span class="st">"Gender"</span>, <span class="st">"Weight (kg)"</span>,
-             <span class="st">"Daily Water Intake (liters)"</span>,
-             <span class="st">"Physical Activity Level"</span>, <span class="st">"Weather"</span>]
-)
-
-prediksi = model.predict(data_baru)[<span class="nu">0</span>]
-<span class="fn">print</span>(f<span class="st">"model memprediksi tingkat hidrasi {prediksi}"</span>)</div>
-        <div class="nb-output">
-            <div class="nb-output-label">Out [83]</div>
-model memprediksi tingkat hidrasi Poor
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    st.markdown("""
-    <div class="tip-box" style="margin-top:0;">
-    💡 <b>Kesimpulan:</b> Perempuan 38 tahun, berat 77 kg, minum hanya 1 liter/hari, aktivitas tinggi di cuaca panas → diprediksi <b>Kurang Hidrasi (Poor)</b>. Masuk akal karena kebutuhan air sangat tinggi namun asupan sangat rendah.
-    </div>
-    """, unsafe_allow_html=True)
-
-
-# ====================================
-# TAB 3 — DEVELOPER
-# ====================================
-with tab3:
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    col_d1, col_d2 = st.columns([1, 1.5], gap="large")
+    # Apa itu hidrasi
+    st.markdown("### 💧 Apa itu Hidrasi?")
+    st.markdown("""
+    <div class="info-card">
+        <h3>🔬 Definisi</h3>
+        <p>Hidrasi adalah kondisi keseimbangan cairan di dalam tubuh. Tubuh membutuhkan air untuk <b>hampir semua fungsi biologis</b>, mulai dari mengangkut nutrisi, mengatur suhu, melancarkan pencernaan, hingga menjaga konsentrasi dan mood. Kekurangan cairan bahkan 1–2% saja sudah bisa mengganggu fungsi kognitif dan fisik.</p>
+    </div>
+    """, unsafe_allow_html=True)
 
+    # Gejala
+    col_g1, col_g2 = st.columns(2)
+    with col_g1:
+        st.markdown("""
+        <div class="info-card" style="border-left-color: #ef4444;">
+            <h3>🚨 Tanda-Tanda Dehidrasi</h3>
+            <p>
+            ❌ &nbsp;Mulut dan tenggorokan kering<br>
+            ❌ &nbsp;Urin berwarna kuning gelap<br>
+            ❌ &nbsp;Sakit kepala dan pusing<br>
+            ❌ &nbsp;Mudah lelah dan lemas<br>
+            ❌ &nbsp;Sulit berkonsentrasi<br>
+            ❌ &nbsp;Jarang buang air kecil<br>
+            ❌ &nbsp;Kulit kering dan tidak elastis
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col_g2:
+        st.markdown("""
+        <div class="info-card" style="border-left-color: #10b981;">
+            <h3>✅ Tanda-Tanda Hidrasi Baik</h3>
+            <p>
+            ✔️ &nbsp;Urin berwarna kuning muda / jernih<br>
+            ✔️ &nbsp;Kulit lembap dan elastis<br>
+            ✔️ &nbsp;Energi stabil sepanjang hari<br>
+            ✔️ &nbsp;Konsentrasi dan fokus baik<br>
+            ✔️ &nbsp;Buang air kecil 6–8x per hari<br>
+            ✔️ &nbsp;Tidak sering pusing<br>
+            ✔️ &nbsp;Nafas segar
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # Faktor yang mempengaruhi
+    st.markdown("### 📌 Faktor yang Mempengaruhi Kebutuhan Air")
+
+    col_f1, col_f2, col_f3 = st.columns(3)
+
+    with col_f1:
+        st.markdown("""
+        <div class="info-card" style="border-left-color: #f59e0b;">
+            <h3>👤 Usia & Jenis Kelamin</h3>
+            <p>
+            • Pria butuh <b>~3.7 liter/hari</b><br>
+            • Wanita butuh <b>~2.7 liter/hari</b><br>
+            • Lansia lebih rentan dehidrasi karena rasa haus menurun<br>
+            • Anak-anak butuh proporsional terhadap berat badan
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col_f2:
+        st.markdown("""
+        <div class="info-card" style="border-left-color: #8b5cf6;">
+            <h3>🏃 Aktivitas Fisik</h3>
+            <p>
+            • <b>Rendah</b>: duduk, belajar → kebutuhan standar<br>
+            • <b>Sedang</b>: jalan kaki, kerja → +0.5L<br>
+            • <b>Tinggi</b>: olahraga berat → +1–2L<br>
+            • Minum 200ml setiap 20 menit saat olahraga
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col_f3:
+        st.markdown("""
+        <div class="info-card" style="border-left-color: #ec4899;">
+            <h3>🌤️ Cuaca & Suhu</h3>
+            <p>
+            • <b>Panas</b> (>30°C): tambah 1–1.5L<br>
+            • <b>Normal</b> (20–30°C): kebutuhan standar<br>
+            • <b>Dingin</b> (<20°C): tetap minum meski tidak haus<br>
+            • Kelembaban tinggi meningkatkan keringat
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    col_f4, col_f5 = st.columns(2)
+
+    with col_f4:
+        st.markdown("""
+        <div class="info-card" style="border-left-color: #14b8a6;">
+            <h3>⚖️ Berat Badan</h3>
+            <p>
+            Rumus sederhana: <b>berat badan × 0.033 liter/kg</b><br><br>
+            Contoh:<br>
+            • 50 kg → 1.65 liter<br>
+            • 70 kg → 2.31 liter<br>
+            • 90 kg → 2.97 liter
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col_f5:
+        st.markdown("""
+        <div class="info-card" style="border-left-color: #f97316;">
+            <h3>🍎 Makanan & Minuman</h3>
+            <p>
+            • ~20% kebutuhan air bisa dari makanan (buah, sayur)<br>
+            • Kafein dan alkohol bersifat diuretik (membuang air)<br>
+            • Buah tinggi air: semangka, mentimun, jeruk<br>
+            • Hindari minuman manis berlebihan
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # Tips praktis
+    st.markdown("### 💡 Tips Menjaga Hidrasi Setiap Hari")
+    st.markdown("""
+    <div class="info-card" style="border-left-color: #2196f3; background: linear-gradient(135deg, #f0f9ff, #e0f2fe);">
+        <h3>📅 Jadwal Minum yang Dianjurkan</h3>
+        <p>
+        ☀️ &nbsp;<b>Bangun tidur</b> → minum 1–2 gelas segera setelah bangun<br>
+        🍳 &nbsp;<b>Sebelum makan</b> → minum 1 gelas untuk membantu pencernaan<br>
+        🌞 &nbsp;<b>Pagi–siang</b> → minum setiap 1 jam sekali<br>
+        🏃 &nbsp;<b>Saat olahraga</b> → minum 200ml setiap 20 menit<br>
+        🌙 &nbsp;<b>Sebelum tidur</b> → minum 1 gelas air putih<br><br>
+        💡 Gunakan botol minum berukuran 600ml–1L dan targetkan habis beberapa kali sehari.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Visualisasi aktivitas vs kebutuhan air
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("### 📊 Visualisasi Kebutuhan Air Berdasarkan Aktivitas & Cuaca")
+
+    fig3, axes = plt.subplots(1, 2, figsize=(12, 4))
+    fig3.patch.set_facecolor('#f8fafc')
+
+    # Chart aktivitas
+    aktivitas_labels = ['Rendah', 'Sedang', 'Tinggi']
+    kebutuhan_pria   = [3.7, 4.2, 5.0]
+    kebutuhan_wanita = [2.7, 3.2, 4.0]
+    x = np.arange(len(aktivitas_labels))
+    width = 0.35
+
+    axes[0].set_facecolor('#f8fafc')
+    bars1 = axes[0].bar(x - width/2, kebutuhan_pria,   width, label='Laki-Laki', color='#2196f3', alpha=0.85, edgecolor='white', linewidth=1.5)
+    bars2 = axes[0].bar(x + width/2, kebutuhan_wanita, width, label='Perempuan', color='#ec4899', alpha=0.85, edgecolor='white', linewidth=1.5)
+    axes[0].set_xlabel('Tingkat Aktivitas', fontsize=9, color='#475569')
+    axes[0].set_ylabel('Kebutuhan Air (liter)', fontsize=9, color='#475569')
+    axes[0].set_title('Kebutuhan Air per Aktivitas & Gender', fontsize=10, fontweight='bold', color='#0a2540', pad=10)
+    axes[0].set_xticks(x)
+    axes[0].set_xticklabels(aktivitas_labels, fontsize=8)
+    axes[0].legend(fontsize=8)
+    axes[0].spines['top'].set_visible(False)
+    axes[0].spines['right'].set_visible(False)
+    axes[0].tick_params(labelsize=8, colors='#64748b')
+    for spine in ['left', 'bottom']:
+        axes[0].spines[spine].set_color('#e2e8f0')
+    for bar in list(bars1) + list(bars2):
+        axes[0].text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.05,
+                     f'{bar.get_height()}L', ha='center', fontsize=7.5, color='#475569', fontweight='bold')
+
+    # Chart cuaca
+    cuaca_labels   = ['Dingin', 'Normal', 'Panas']
+    tambahan_air   = [0, 0.5, 1.5]
+    colors_cuaca   = ['#7dd3fc', '#2196f3', '#f97316']
+    axes[1].set_facecolor('#f8fafc')
+    bars3 = axes[1].bar(cuaca_labels, tambahan_air, color=colors_cuaca, alpha=0.85, edgecolor='white', linewidth=1.5, width=0.5)
+    axes[1].set_xlabel('Kondisi Cuaca', fontsize=9, color='#475569')
+    axes[1].set_ylabel('Tambahan Kebutuhan Air (liter)', fontsize=9, color='#475569')
+    axes[1].set_title('Tambahan Kebutuhan Air per Cuaca', fontsize=10, fontweight='bold', color='#0a2540', pad=10)
+    axes[1].spines['top'].set_visible(False)
+    axes[1].spines['right'].set_visible(False)
+    axes[1].tick_params(labelsize=8, colors='#64748b')
+    for spine in ['left', 'bottom']:
+        axes[1].spines[spine].set_color('#e2e8f0')
+    for bar, val in zip(bars3, tambahan_air):
+        axes[1].text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.02,
+                     f'+{val}L', ha='center', fontsize=9, color='#475569', fontweight='bold')
+
+    plt.tight_layout(pad=2)
+    st.pyplot(fig3)
+
+    # Dampak dehidrasi
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("### ⚠️ Dampak Dehidrasi pada Tubuh")
+
+    col_d1, col_d2, col_d3 = st.columns(3)
     with col_d1:
         st.markdown("""
-        <div class="card" style="text-align:center; padding:2rem;">
-            <div style="font-size:3.5rem;">👨‍🎓</div>
-            <div style="font-size:1.2rem; font-weight:800; color:#0d47a1; margin:0.6rem 0 0.2rem;">Alrifat</div>
-            <div style="font-size:0.8rem; color:#78909c; font-weight:500;">Machine Learning Student</div>
-            <div style="margin-top:1rem;">
-                <span style="background:#e8f0fe; color:#1565c0; border-radius:100px; padding:0.25rem 0.8rem; font-size:0.72rem; font-weight:600; display:inline-block; margin:0.2rem;">🎓 SMK</span>
-                <span style="background:#e8f5e9; color:#2e7d32; border-radius:100px; padding:0.25rem 0.8rem; font-size:0.72rem; font-weight:600; display:inline-block; margin:0.2rem;">🤖 Machine Learning</span>
-                <span style="background:#fff3e0; color:#e65100; border-radius:100px; padding:0.25rem 0.8rem; font-size:0.72rem; font-weight:600; display:inline-block; margin:0.2rem;">🐍 Python</span>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-        st.markdown("""
-        <div class="card" style="padding:1.2rem 1.5rem;">
-            <div class="card-title">📬 Kontak</div>
-            <div style="font-size:0.83rem; color:#546e7a; line-height:2.2;">
-                📧 &nbsp;email@example.com<br>
-                🐙 &nbsp;github.com/alrifat<br>
-                🏫 &nbsp;SMK Negeri 1 Purbalingga
-            </div>
+        <div class="info-card" style="border-left-color:#f59e0b;">
+            <h3>🧠 Otak & Mental</h3>
+            <p>
+            Kehilangan 1–2% cairan menurunkan konsentrasi, memori jangka pendek, dan meningkatkan risiko sakit kepala serta kelelahan mental.
+            </p>
         </div>
         """, unsafe_allow_html=True)
 
     with col_d2:
-        st.markdown('<div class="card-title" style="margin-bottom:0.6rem;">🛠️ Teknologi yang Digunakan</div>', unsafe_allow_html=True)
+        st.markdown("""
+        <div class="info-card" style="border-left-color:#ef4444;">
+            <h3>💪 Otot & Fisik</h3>
+            <p>
+            Dehidrasi menyebabkan kram otot, penurunan kekuatan fisik, dan pemulihan lebih lambat setelah olahraga.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
 
-        techs = [
-            ("🐍", "Python 3.x",           "Bahasa pemrograman utama"),
-            ("📊", "Pandas",               "Manipulasi & analisis data"),
-            ("🤖", "Scikit-learn",         "Algoritma Machine Learning"),
-            ("💾", "Joblib",               "Menyimpan & memuat model"),
-            ("🌐", "Streamlit",            "Framework web app interaktif"),
-            ("📈", "Matplotlib / Seaborn", "Visualisasi data"),
+    with col_d3:
+        st.markdown("""
+        <div class="info-card" style="border-left-color:#8b5cf6;">
+            <h3>🫀 Organ Vital</h3>
+            <p>
+            Jangka panjang: risiko batu ginjal, infeksi saluran kemih, dan gangguan jantung meningkat signifikan.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+
+
+# ===============================
+# TAB 3 — DEVELOPER
+# ===============================
+with tab3:
+
+    st.markdown("""
+    <div class="hero-card">
+        <h1>👨‍💻 Tentang Developer</h1>
+        <p>Informasi tentang pembuat aplikasi dan teknologi yang digunakan.</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    col_dev1, col_dev2 = st.columns([1, 1.5], gap="large")
+
+    with col_dev1:
+        st.markdown("""
+        <div class="dev-card">
+            <div style="font-size:4rem;">👨‍🎓</div>
+            <h2>Alrifat</h2>
+            <p>Machine Learning Student</p>
+            <br>
+            <span class="badge">🎓 SMK</span>
+            <span class="badge">🤖 Machine Learning</span>
+            <span class="badge">🐍 Python</span>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("""
+        <div class="info-card" style="border-left-color:#10b981; margin-top: 0.8rem;">
+            <h3>📬 Kontak</h3>
+            <p>
+            📧 &nbsp;email@example.com<br>
+            🐙 &nbsp;github.com/alrifat<br>
+            💼 &nbsp;Terbuka untuk kolaborasi project ML
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col_dev2:
+        st.markdown("### 🛠️ Teknologi yang Digunakan")
+
+        tech_items = [
+            ("🐍", "Python 3.x",         "Bahasa pemrograman utama"),
+            ("📊", "Pandas",              "Manipulasi dan analisis data"),
+            ("🤖", "Scikit-learn",        "Algoritma Machine Learning"),
+            ("💾", "Joblib",              "Menyimpan dan memuat model"),
+            ("📈", "Matplotlib / Seaborn","Visualisasi data"),
+            ("🌐", "Streamlit",           "Framework web app"),
         ]
-        for icon, name, desc in techs:
+
+        for icon, name, desc in tech_items:
             st.markdown(f"""
-            <div class="info-item">
-                <div class="info-icon">{icon}</div>
+            <div style="display:flex; align-items:center; gap:1rem; background:white; border-radius:12px; padding:0.8rem 1rem; margin-bottom:0.5rem; box-shadow:0 1px 6px rgba(10,37,64,0.06); border:1px solid rgba(10,37,64,0.05);">
+                <div style="font-size:1.5rem; min-width:2rem; text-align:center;">{icon}</div>
                 <div>
-                    <div class="info-name">{name}</div>
-                    <div class="info-desc">{desc}</div>
+                    <div style="font-weight:700; font-size:0.88rem; color:#0a2540;">{name}</div>
+                    <div style="font-size:0.78rem; color:#64748b;">{desc}</div>
                 </div>
             </div>
             """, unsafe_allow_html=True)
 
         st.markdown("<br>", unsafe_allow_html=True)
-        st.markdown('<div class="card-title" style="margin-bottom:0.6rem;">🤖 Perbandingan Model</div>', unsafe_allow_html=True)
+        st.markdown("### 🤖 Model Machine Learning")
 
-        models = [
-            ("🔵", "Logistic Regression", "97.83%", "acc-good"),
-            ("🌲", "Random Forest",       "97.57%", ""),
-            ("🌳", "Decision Tree",       "96.48%", "acc-ok"),
+        models_info = [
+            ("🔵", "Logistic Regression", "~99.70%", "Regresi linear untuk klasifikasi biner"),
+            ("🌲", "Random Forest",       "~98.42%", "Ensemble dari banyak decision tree"),
+            ("🌳", "Decision Tree",       "~99.28%", "Pohon keputusan berbasis aturan if-else"),
         ]
-        for icon, name, acc, cls in models:
+
+        for icon, name, acc, desc in models_info:
             st.markdown(f"""
-            <div class="info-item" style="justify-content:space-between;">
+            <div style="display:flex; align-items:center; justify-content:space-between; background:white; border-radius:12px; padding:0.8rem 1rem; margin-bottom:0.5rem; box-shadow:0 1px 6px rgba(10,37,64,0.06); border:1px solid rgba(10,37,64,0.05);">
                 <div style="display:flex; align-items:center; gap:0.8rem;">
-                    <div class="info-icon">{icon}</div>
-                    <div class="info-name">{name}</div>
+                    <span style="font-size:1.3rem;">{icon}</span>
+                    <div>
+                        <div style="font-weight:700; font-size:0.88rem; color:#0a2540;">{name}</div>
+                        <div style="font-size:0.75rem; color:#64748b;">{desc}</div>
+                    </div>
                 </div>
-                <span class="acc-badge {cls}">{acc}</span>
+                <span style="background:linear-gradient(135deg,#0a2540,#1565c0); color:white; border-radius:100px; padding:0.2rem 0.7rem; font-size:0.75rem; font-weight:700; font-family:'Space Mono',monospace;">{acc}</span>
             </div>
             """, unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("---")
+
     st.markdown("""
-    <div style="text-align:center; padding:1rem; font-size:0.75rem; color:#90a4ae;">
-        💧 HydroCheck &nbsp;·&nbsp; SMK ML Project &nbsp;·&nbsp; 2026<br>
-        <span style="font-family:'Fira Code', monospace; font-size:0.68rem;">Built with Python · Scikit-learn · Streamlit</span>
+    <div style="text-align:center; padding:1.5rem; background:white; border-radius:16px; box-shadow:0 2px 12px rgba(10,37,64,0.06); border:1px solid rgba(10,37,64,0.05);">
+        <div style="font-size:0.8rem; color:#94a3b8; font-weight:500;">
+            💧 HydroCheck &nbsp;·&nbsp; SMK Machine Learning Project &nbsp;·&nbsp; 2026<br>
+            <span style="font-size:0.72rem; font-family:'Space Mono',monospace; margin-top:4px; display:block;">Built with Python · Scikit-learn · Streamlit</span>
+        </div>
     </div>
     """, unsafe_allow_html=True)
