@@ -416,8 +416,6 @@ with st.sidebar:
     st.markdown("""
     <div style="font-size:0.83rem; color:#cbd5e1; line-height:1.8;">
     ✅ &nbsp;<b style="color:#86efac;">Decision Tree</b><br>
-    ✅ &nbsp;Random Forest<br>
-    ✅ &nbsp;Logistic Regression
     </div>
     """, unsafe_allow_html=True)
 
@@ -473,31 +471,22 @@ with tab1:
         <div class="panel-title">👤 Data Personal</div>
         """, unsafe_allow_html=True)
 
-        umur = st.slider("🎂 Umur (tahun)", 10, 80, 25,
-                         help="Masukkan usia Anda dalam tahun")
+        umur = st.slider("🎂 Umur (tahun)", 10, 80, 25)
 
-        berat = st.slider("⚖️ Berat Badan (kg)", 30.0, 120.0, 60.0, step=0.5,
-                          help="Masukkan berat badan Anda dalam kilogram")
-
-        gender = st.selectbox("🚻 Jenis Kelamin",
-                              ["Laki-Laki", "Perempuan"],
-                              help="Pilih jenis kelamin Anda")
+        berat = st.slider("⚖️ Berat Badan (kg)", 30.0, 120.0, 60.0, step=0.5)
+                       
+        gender = st.selectbox("🚻 Jenis Kelamin",["Laki-Laki", "Perempuan"])
 
     with col2:
         st.markdown("""
         <div class="panel-title">🌿 Gaya Hidup & Lingkungan</div>
         """, unsafe_allow_html=True)
 
-        air = st.slider("🥤 Konsumsi Air per Hari (liter)", 0.5, 5.0, 2.0, step=0.1,
-                        help="Rata-rata jumlah air yang Anda minum dalam sehari")
+        air = st.slider("🥤 Konsumsi Air per Hari (liter)", 0.5, 5.0, 2.0, step=0.1)
 
-        aktivitas = st.selectbox("🏃 Tingkat Aktivitas Fisik",
-                                 ["Rendah", "Sedang", "Tinggi"],
-                                 help="Rendah = duduk/santai | Sedang = jalan kaki/kerja | Tinggi = olahraga/kerja keras")
+        aktivitas = st.selectbox("🏃 Tingkat Aktivitas Fisik", ["Rendah", "Sedang", "Tinggi"])
 
-        cuaca = st.selectbox("🌤️ Kondisi Cuaca",
-                             ["Normal", "Panas", "Dingin"],
-                             help="Kondisi cuaca di lingkungan Anda saat ini")
+        cuaca = st.selectbox("🌤️ Kondisi Cuaca", ["Normal", "Panas", "Dingin"])
 
     st.markdown("<br>", unsafe_allow_html=True)
 
@@ -934,7 +923,7 @@ with tab3:
         st.markdown("""
         <div class="dev-card">
             <div style="font-size:4rem;">👨‍🎓</div>
-            <h2>Alrifat</h2>
+            <h2>‎ ‎ ‎ ‎ ‎ Alrifat</h2>
             <p>Machine Learning Student</p>
             <br>
             <span class="badge">🎓 SMK</span>
@@ -947,9 +936,7 @@ with tab3:
         <div class="info-card" style="border-left-color:#10b981; margin-top: 0.8rem;">
             <h3>📬 Kontak</h3>
             <p>
-            📧 &nbsp;email@example.com<br>
-            🐙 &nbsp;github.com/alrifat<br>
-            💼 &nbsp;Terbuka untuk kolaborasi project ML
+            🐙 &nbsp;github.com/alrifat2500<br>
             </p>
         </div>
         """, unsafe_allow_html=True)
