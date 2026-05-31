@@ -60,31 +60,7 @@ st.markdown("""
         background: transparent;
     }
 
-    /* ===== TABS ===== */
-    .stTabs [data-baseweb="tab-list"] {
-        background: white;
-        border-radius: 16px;
-        padding: 6px;
-        gap: 4px;
-        box-shadow: 0 2px 12px rgba(10, 37, 64, 0.08);
-        border: 1px solid rgba(10, 37, 64, 0.06);
-    }
-
-    .stTabs [data-baseweb="tab"] {
-        border-radius: 12px;
-        font-family: 'Plus Jakarta Sans', sans-serif;
-        font-weight: 600;
-        font-size: 0.88rem;
-        color: #64748b;
-        padding: 10px 22px;
-        transition: all 0.2s;
-    }
-
-    .stTabs [aria-selected="true"] {
-        background: linear-gradient(135deg, #0a2540, #1a5276) !important;
-        color: white !important;
-    }
-
+    
     /* ===== METRIC CARDS ===== */
     [data-testid="stMetric"] {
         background: white;
@@ -92,11 +68,6 @@ st.markdown("""
         padding: 1.2rem 1.4rem;
         box-shadow: 0 2px 12px rgba(10, 37, 64, 0.07);
         border: 1px solid rgba(10, 37, 64, 0.05);
-    }
-
-    /* ===== SLIDERS ===== */
-    [data-testid="stSlider"] > div > div > div > div {
-        background: linear-gradient(90deg, #0a2540, #2196f3) !important;
     }
 
     /* ===== BUTTONS ===== */
@@ -443,10 +414,11 @@ with st.sidebar:
 # ===============================
 # TABS
 # ===============================
-tab1, tab2, tab3 = st.tabs([
+tab1, tab2, tab3, tab4 = st.tabs([
     "  💧  Prediksi  ",
     "  📚  Informasi  ",
-    "  👨‍💻  Developer  "
+    "  👨‍💻  Developer  ",
+    "  📓  Notebook  "
 ])
 
 
@@ -998,3 +970,52 @@ with tab3:
         </div>
     </div>
     """, unsafe_allow_html=True)
+
+# ===============================
+# TAB 4 — NOTEBOOK
+# ===============================
+with tab4:
+    st.markdown("""
+    <div class="hero-card">
+        <h1>📓 Notebook Machine Learning</h1>
+        <p>Menampilkan kode dari Jupyter Notebook beserta outputnya.</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    import nbformat
+
+    try:
+        nb = nbformat.read("klasifikasi.ipynb", as_version=4)
+
+        for i, cell in enumerate(nb.cells):
+            st.markdown(f"### Cell {i+1} ({cell.cell_type})")
+
+            if cell.cell_type == "code":
+                st.code(cell.source, language="python")
+
+                if cell.get("outputs"):
+                    st.markdown("**Output:**")
+
+                    for output in cell["outputs"]:
+                        if output.output_type == "stream":
+                            st.text(output.text)
+
+                        elif output.output_type in ["execute_result", "display_data"]:
+                            data = output.get("data", {})
+
+                            if "text/plain" in data:
+                                st.text(data["text/plain"])
+
+                            elif "text/html" in data:
+                                st.markdown(data["text/html"], unsafe_allow_html=True)
+
+                        elif output.output_type == "error":
+                            st.error("\n".join(output.get("traceback", [])))
+
+            elif cell.cell_type == "markdown":
+                st.markdown(cell.source)
+
+            st.divider()
+
+    except Exception as e:
+        st.error(f"Gagal memuat notebook: {e}")
